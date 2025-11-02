@@ -1,7 +1,16 @@
 # chat/consumers.py
 import json
-import base64
-import imghdr
+import base64 
+from PIL import Image
+from io import BytesIO
+
+def detect_image_format(image_bytes):
+    try:
+        img = Image.open(BytesIO(image_bytes))
+        return img.format.lower()
+    except Exception:
+        return "png"
+
 import uuid
 import mimetypes
 import logging
@@ -240,7 +249,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         header, b64data = data_url.split(",", 1)
         ext = header.split(";")[0].split("/")[-1]
         decoded = base64.b64decode(b64data)
-        kind = imghdr.what(None, decoded) or ext or "png"
+        kind = detect_image_format(decoded) or ext or "png"
         filename = f"{uuid.uuid4().hex}.{kind}"
         room, _ = Room.objects.get_or_create(name=room_name)
         msg = Message.objects.create(user=user, room=room, content="")
