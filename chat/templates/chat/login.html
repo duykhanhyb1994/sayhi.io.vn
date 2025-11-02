@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Đăng nhập hệ thống chat</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0078ff, #00c6ff);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: white;
+            margin: 0;
+        }
+
+        .login-box {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            width: 90%;
+            max-width: 350px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        h2 {
+            margin-bottom: 20px;
+        }
+
+        input {
+            width: 90%;
+            margin: 10px 0;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        button {
+            width: 95%;
+            background: white;
+            color: #0078ff;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        a {
+            color: #fff;
+            text-decoration: underline;
+        }
+
+        .error {
+            color: #ffcccc;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        p {
+            margin-top: 15px;
+            font-size: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <h2>Đăng nhập</h2>
+
+        {% if error %}
+            <p class="error">{{ error }}</p>
+        {% endif %}
+
+        <form method="POST">
+            {% csrf_token %}
+            <input type="text" name="username" placeholder="Tên đăng nhập" required><br>
+            <input type="password" name="password" placeholder="Mật khẩu" required><br>
+            <button type="submit">Đăng nhập</button>
+        </form>
+
+        <p>Chưa có tài khoản? <a href="{% url 'register' %}">Đăng ký ngay</a></p>
+    </div>
+</body>
+</html>

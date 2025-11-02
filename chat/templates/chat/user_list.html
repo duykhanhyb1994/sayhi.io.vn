@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Danh sách người dùng</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f6f7fb;
+      margin: 0;
+    }
+    header {
+      background: #0068ff;
+      color: white;
+      padding: 14px;
+      text-align: center;
+      font-weight: bold;
+    }
+    .container { padding: 16px; }
+    .user {
+      display: flex;
+      align-items: center;
+      background: white;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+    .status {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 10px;
+    }
+    .online { background: #28c76f; }
+    .offline { background: #ccc; }
+    a {
+      color: #0068ff;
+      text-decoration: none;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <header>Người dùng đang hoạt động</header>
+  <div class="container">
+    {% for user in users %}
+      <div class="user">
+        <div class="status {% if status_map.get(user.id) and status_map.get(user.id).is_online %}online{% else %}offline{% endif %}"></div>
+        <a href="{% url 'room_view' user.username %}">{{ user.username }}</a>
+      </div>
+    {% endfor %}
+  </div>
+</body>
+</html>

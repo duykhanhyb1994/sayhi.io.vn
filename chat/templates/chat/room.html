@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>{{ room_name }}</title>
+  <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1.18.0/index.js"></script>
+  <style>
+    :root {
+      --blue: #0068ff;
+      --light-bg: #f6f7fb;
+      --chat-bg: #fff;
+      --radius: 20px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--light-bg);
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    header {
+      background: var(--blue);
+      color: white;
+      text-align: center;
+      padding: 14px;
+      font-size: 17px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    #chat-log {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      scroll-behavior: smooth;
+      background: #f6f7fb;
+    }
+
+    .msg-row { display: flex; align-items: flex-end; margin: 6px 0; }
+    .me { justify-content: flex-end; }
+
+    .msg {
+      max-width: 78%;
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      line-height: 1.4;
+      font-size: 15px;
+      word-wrap: break-word;
+    }
+
+    .msg.me-msg { background: var(--blue); color: white; border-bottom-right-radius: 6px; }
+    .msg.other-msg {
+      background: var(--chat-bg); color: black;
+      border-bottom-left-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    .msg-time { font-size: 10px; color: gray; margin-top: 2px; text-align: right; }
+
+    .avatar { width: 32px; height: 32px; border-radius: 50%; margin: 0 6px; }
+
+    #typing { font-size: 12px; color: gray; padding: 3px 15px; height: 18px; }
+
+    .chat-input-container {
+      display: flex;
+      align-items: center;
+      padding: 8px 10px;
+      background: white;
+      border-top: 1px solid #ddd;
+      flex-shrink: 0;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      gap: 6px;
+    }
+
+    #chat-message-input {
+      flex: 1;
+      border: none;
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      font-size: 16px;
+      background: #f0f0f0;
+      outline: none;
+    }
+
+    .icon-btn {
+      font-size: 22px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #666;
+    }
+
+    #chat-message-submit {
+      background: var(--blue);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 42px;
+      height: 42px;
+      font-size: 18px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .file-link {
+      color: var(--blue);
+      text-decoration: none;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+  </style>
+</head>
+
+<body>
+  <header>{{ room_name }}</header>
+
+  <div id="chat-log"></div>
+  <div id="typing"></div>
+
+  <div class="chat-input-container" id="input-bar">
+    <button class="icon-btn" id="emoji-btn">😊</button>
+    <input id="chat-message-input" type="text" placeholder="Tin nhắn..." autocomplete="off" />
+    <input type="file" id="file-input" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip" style="display:none;">
+    <button class="icon-btn" id="file-btn">📎</button>
+    <button id="chat-message-submit">➤</button>
+  </div>
+
+  <emoji-picker id="emoji-picker" style="display:none; position:fixed; bottom:60px; left:0; right:0; height:40%;"></emoji-picker>
+
+  <script>
+    const username = "{{ user.username }}";
+    const roomName = "{{ room_name }}";
+
+    const protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
+    const host = window.location.hostname + (window.location.port ? ":" + window.location.port : "");
+    const chatSocket = new WebSocket(protocol + host + "/ws/chat/" + roomName + "/");
+
+    const chatLog = document.getElementById("chat-log");
+    const input = document.getElementById("chat-message-input");
+    const typingDiv = document.getElementById("typing");
+    const picker = document.getElementById("emoji-picker");
+    const inputBar = document.getElementById("input-bar");
+
+    function timeNow() {
+      return new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+    }
+
+    // ✅ Hiển thị tin nhắn
+    function addMessage(user, msg, type = "text", img = null, file = null, filename = null, timestamp = null) {
+      const row = document.createElement("div");
+      row.classList.add("msg-row", user === username ? "me" : "other");
+
+      if (user !== username) {
+        const avatar = document.createElement("img");
+        avatar.src = `https://ui-avatars.com/api/?name=${user}&background=random`;
+        avatar.classList.add("avatar");
+        row.appendChild(avatar);
+      }
+
+      const msgDiv = document.createElement("div");
+      msgDiv.classList.add("msg", user === username ? "me-msg" : "other-msg");
+
+      if (type === "image") {
+        const imgEl = document.createElement("img");
+        imgEl.src = img;
+        imgEl.style.maxWidth = "180px";
+        imgEl.style.borderRadius = "10px";
+        msgDiv.appendChild(imgEl);
+      } else if (type === "file") {
+        const link = document.createElement("a");
+        link.href = file;
+        link.target = "_blank";
+        link.classList.add("file-link");
+        link.innerHTML = `📄 ${filename || 'Tệp đính kèm'}`;
+        msgDiv.appendChild(link);
+      } else {
+        msgDiv.innerText = msg;
+      }
+
+      const time = document.createElement("div");
+      time.classList.add("msg-time");
+      time.innerText = timestamp || timeNow();
+      msgDiv.appendChild(time);
+
+      row.appendChild(msgDiv);
+      chatLog.appendChild(row);
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
+    // ✅ Nhận dữ liệu từ WebSocket
+    chatSocket.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+
+      if (data.type === "chat") addMessage(data.username, data.message, "text", null, null, null, data.timestamp);
+      else if (data.type === "image") addMessage(data.username, "", "image", data.image, null, null, data.timestamp);
+      else if (data.type === "file") addMessage(data.username, "", "file", null, data.file_url, data.filename, data.timestamp);
+      else if (data.type === "history") {
+        data.messages.forEach(m => {
+          addMessage(m.username, m.message || "", m.type || "text", m.image, m.file, m.filename, m.timestamp);
+        });
+      }
+      else if (data.type === "typing" && data.username !== username) {
+        typingDiv.innerText = `✍️ ${data.username} đang nhập...`;
+        clearTimeout(window.typingTimeout);
+        window.typingTimeout = setTimeout(() => typingDiv.innerText = "", 2000);
+      }
+    };
+
+    // Gửi tin nhắn text
+    function sendMessage() {
+      const msg = input.value.trim();
+      if (msg) {
+        chatSocket.send(JSON.stringify({ type: "chat", message: msg }));
+        input.value = "";
+        picker.style.display = "none";
+      }
+    }
+
+    document.getElementById("chat-message-submit").onclick = sendMessage;
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); sendMessage(); }
+    });
+
+    // Emoji
+    document.getElementById("emoji-btn").onclick = () => {
+      picker.style.display = picker.style.display === "none" ? "block" : "none";
+    };
+    picker.addEventListener("emoji-click", (event) => { input.value += event.detail.unicode; });
+
+    // File upload
+    document.getElementById("file-btn").onclick = () => document.getElementById("file-input").click();
+    document.getElementById("file-input").onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        chatSocket.send(JSON.stringify({ type: "file", file: reader.result, filename: file.name }));
+      };
+      reader.readAsDataURL(file);
+    };
+
+    input.addEventListener("input", () => chatSocket.send(JSON.stringify({ type: "typing" })));
+
+    // Fix bàn phím mobile
+    if (window.visualViewport) {
+      const viewport = window.visualViewport;
+      viewport.addEventListener("resize", () => {
+        const offset = viewport.height < window.innerHeight ? window.innerHeight - viewport.height : 0;
+        inputBar.style.bottom = offset + "px";
+      });
+    }
+  </script>
+</body>
+</html>
